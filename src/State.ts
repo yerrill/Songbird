@@ -85,7 +85,9 @@ export default class State{
         writeFileSync(stateSave, JSON.stringify(this.obj));
     }
 
-    isRegistered(channel: string): boolean {
+    // SUBSCRIPTION FUNCTIONALITY
+
+    isRegistered(channel: string): boolean { // Check if channel id is in subscription list
         for (var n in this.obj.subscriptions) {
             if (this.obj.subscriptions[n].channelId === channel) {
                 return true;
@@ -95,7 +97,55 @@ export default class State{
         return false;
     }
 
-    register(channel: string): void {
+    register(channel: string): void { // Add a channel Id to the subscriptions list
         if (this.isRegistered(channel)) { return; }
+
+        this.obj.subscriptions.push(new Subs(channel, true, []));
     }
+
+    deregister(channel: string): void { // Remove a channel id from the subscriptions list
+        if (!this.isRegistered(channel)) { return; }
+
+        this.obj.subscriptions = this.obj.subscriptions.filter((value, index, arr) => value.channelId !== channel);
+    }
+
+    // SUBSCRIPTION - OBSERVED FUNCTIONALITY
+
+	private getSubsObj(channel: string): Subs | undefined {
+		for (var n in this.obj.subscriptions) {
+			if (this.obj.subscriptions[n].channelId === channel) {
+				return this.obj.subscriptions[n];
+			}
+		}
+
+		return undefined;
+	}
+
+	private subscribed(channel: string, twitterUser: string): boolean {
+		var s: Subs | undefined = this.getSubsObj(channel);
+
+		if (s) {
+			for (var n in s.observed) {
+				if (s.observed[n] === twitterUser) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	addUser(channel: string, twitterUser: string): void {
+		if (this.subscribed(channel, twitterUser)) { return; }
+
+        var o: Subs | undefined = this.getSubsObj(channel);
+
+        if (o) {
+            o.observed.push()
+        }
+	}
+
+	removeUser(channel: string, twitterUser: string): void {
+		
+	}
 }

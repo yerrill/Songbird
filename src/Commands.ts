@@ -3,7 +3,7 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
 import { discordToken, oauthClientId } from "./config.json";
-import State from './State';
+import State, { Subs } from './State';
 
 
 export default class Commands {
@@ -34,7 +34,7 @@ export default class Commands {
 		this.commands.push(c);
 
 		c = new SlashCommandBuilder();
-		c.setName('user');
+		c.setName('stop');
 		c.setDescription('Stop/Pause sending Tweets');
 		this.commands.push(c);
 
@@ -60,6 +60,8 @@ export default class Commands {
 
 		this.commands.push(c);
     }
+
+	
 
 	async register(guildId: string): Promise<boolean> {
 		const sendCommands: any[] = this.commands.map(command => command.toJSON());
