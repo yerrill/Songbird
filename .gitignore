@@ -102,3 +102,11 @@ dist
 
 # TernJS port file
 .tern-port
+
+# Out files
+dist/
+
+# Other Files
+src/config.json
+state.json
+src/TestBench.ts
