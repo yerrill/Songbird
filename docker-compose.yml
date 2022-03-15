@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  SB:
+    image: "songbird:latest"
+    volumes:
+      - SongbirdState:/song/
+
+volumes:
+  SongbirdState:
