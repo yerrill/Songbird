@@ -3,6 +3,7 @@ version: "3.9"
 services:
   SB:
     image: "songbird:latest"
+    restart: always
     volumes:
       - SongbirdState:/song/
 
