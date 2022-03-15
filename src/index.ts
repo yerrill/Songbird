@@ -1,6 +1,6 @@
 import { Client, CommandInteraction, Intents, Interaction, Message, MessageEmbed, TextChannel } from 'discord.js';
 import { discordToken, twitterBearer } from './config.json';
-import State from './State';
+import State, { Account, Pair } from './State';
 import Commands from './Commands';
 import { Profile, TweetSet, Twitter } from './Twitter';
 import { CronJob } from 'cron';
@@ -19,26 +19,39 @@ async function sendEmbed(channelID: string, embed: MessageEmbed): Promise<Messag
 var job = new CronJob("*/2 * * * *", async () => {
 	console.log("Firing Job");
 
-	var channel: string;
+	var accounts: Account[] = state.obj.accounts;
+	var acc: Account;
+	var user: Pair;
 
 	var tweets: TweetSet;
 
 	var embed: MessageEmbed;
 
-	for (var i in state.obj.accounts) {
-		channel = state.obj.accounts[i].channel;
+	for (var i in accounts) {
+		acc = state.getAccount(accounts[i].channel) as Account;
 
-		for (var j in state.obj.accounts[i].users) {
-			tweets = await twitter.getTweets(state.obj.accounts[i].users[j].id, state.obj.accounts[i].users[j].value);
+		for (var j in acc.users) {
+			user = state.getUser(acc, acc.users[j].id) as Pair;
 
-			state.obj.accounts[i].users[j].value = tweets.latestId;
+			tweets = await twitter.getTweets(user.id, user.value);
+
+			if(tweets.latestId){
+				state.updateTweet(user, tweets.latestId);
+				//console.log("Updated Values");
+			}
+			
+			//console.log(tweets);
 
 			for (var k in tweets.tweets) {
 				embed = await twitter.createEmbed(tweets.tweets[k])
-				sendEmbed(channel, embed);
+				//console.log(tweets.tweets[k]);
+				sendEmbed(acc.channel, embed);
 			}
 		}
+
+		//console.log(state.obj.accounts[0].users);
 	}
+	state.write();
 });
 
 
@@ -68,7 +81,7 @@ client.login(discordToken);
 
 
 process.on("SIGINT", () => {
-	console.log(state.obj);
+	//console.log(state.obj);
 	state.write();
 	job.stop();
 	client.destroy();
