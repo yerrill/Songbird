@@ -3,17 +3,20 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
 import { discordToken, oauthClientId } from "./config.json";
-import State, { Subs } from './State';
+import State from './State';
+import { Twitter } from './Twitter';
 
 
 export default class Commands {
 	client: Client;
 	state: State;
+	twitter: Twitter;
 	commands: SlashCommandBuilder[];
 
-    constructor(client_: Client, s: State) {
+    constructor(client_: Client, s: State, t: Twitter) {
 		this.client = client_;
 		this.state = s;
+		this.twitter = t;
 		this.commands = [];
 
 		var c: SlashCommandBuilder;
@@ -79,7 +82,47 @@ export default class Commands {
 
 	async handler(interaction: CommandInteraction): Promise<void> {
 		
+		const commandName: string = interaction.commandName;
+		const channelId: string = interaction.channelId;
+		const option: any = interaction.options.get("user")?.value
+		var id: string;
 
-		console.log(interaction.options.get("user")?.value);
+		if (commandName === "register") {
+			this.state.createAccount(interaction.channelId);
+			interaction.reply("Registered Channel")
+
+		} else if (commandName === "deregister") {
+			this.state.removeAccount(interaction.channelId);
+			interaction.reply("Deregistered Channel")
+
+		} else if (commandName === "start") {
+
+		} else if (commandName === "stop") {
+
+		} else if (commandName === "add") {
+			try {
+				id = await this.twitter.getIdByUsername(option);
+				this.state.addUser(this.state.createAccount(channelId), id);
+				interaction.reply(`Added ${option}`);
+			} catch (e) {
+				console.log(e);
+				interaction.reply("Error Occured");
+			}
+
+		} else if (commandName === "remove") {
+			try {
+				id = await this.twitter.getIdByUsername(option);
+				this.state.removeUser(this.state.createAccount(channelId), id);
+				interaction.reply(`Removed ${option}`);
+			} catch (e) {
+				console.log(e);
+				interaction.reply("Error Occured");
+			}
+
+		} else {
+
+		}
+
+		//console.log(this.state.obj);
 	}
 }
