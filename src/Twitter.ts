@@ -26,7 +26,8 @@ export class Twitter {
         });
     }
 
-    async makeProfile(id: string): Promise<Profile> { // Create a profile used for further actions
+    
+    async getInfo(id: string): Promise<Profile> { // Create a profile used for further actions, Promise<Profile>
         const info: Promise<UserV2Result> = this.twitterClient.v2.user(id, { "user.fields": ["profile_image_url"] });
 
         return new Promise((resolve, reject) => {
@@ -39,11 +40,12 @@ export class Twitter {
         });
     }
 
-    async getTweetsByProfile(profile: Profile): Promise<Tweet[]> {
-        var lastTweet = this.stateGetLastTweetById(profile.id);
+    /*
+    async getTweetsByProfile(profile: Profile, lastTweet?: string): Promise<Tweet[]> {
+        //var lastTweet = this.stateGetLastTweetById(profile.id);
         var info: Promise<TweetUserTimelineV2Paginator>;
 
-        if (lastTweet === "") {
+        if (!lastTweet) {
             info = this.twitterClient.v2.userTimeline(profile.id, {exclude: ['replies', 'retweets']});
         }
         else {
@@ -73,106 +75,100 @@ export class Twitter {
                 reject(`getTweetsByProfile - Twitter Error ${e}`);
             });
         });
-    }
+    }*/
 
-    stateGetLastTweetById(id: string): string { // State - Get last tweet id from state
-        var tweetId: string;
+    async getTweets(userId: string, lastTweet: string): Promise<TweetSet> {
+        //const profile: Profile = await this.makeProfile(userId);
 
-        for (var n in this.stateRep.obj.twitterUsers){
-            if (this.stateRep.obj.twitterUsers[n].id == id) {
-                return this.stateRep.obj.twitterUsers[n].value;
-            }
+        var info: Promise<TweetUserTimelineV2Paginator>;
+
+        if (lastTweet === "") {
+            info = this.twitterClient.v2.userTimeline(userId, {exclude: ['replies', 'retweets']});
         }
-
-        return "";
-    }
-
-    stateUpdateLastTweet(id: string, tweetId: string): void { //State - Update the last tweet from user
-        for (var n in this.stateRep.obj.twitterUsers) {
-            if (this.stateRep.obj.twitterUsers[n].id == id) {
-                this.stateRep.obj.twitterUsers[n].value = tweetId;
-            }
+        else {
+            info = this.twitterClient.v2.userTimeline(userId, {exclude: ['replies', 'retweets'], since_id: lastTweet});
         }
+        
+        return new Promise((resolve, reject) => {
+            var arr: Tweet[] = [];
+            var t: Tweet;
+
+            info.then( (v) => {
+                for (var n in v.tweets) {
+                    t = new Tweet(userId, v.tweets[n].id, v.tweets[n].text);
+                    arr.push(t);
+                }
+
+                resolve(new TweetSet(arr, v.meta.newest_id));
+            });
+            info.catch( (e) => {
+                reject(`getTweets - Twitter Error ${e}`);
+            });
+        });
     }
 
+    async createEmbed(tweet: Tweet): Promise<TwitterEmbed> {
+        const info: Profile = await this.getInfo(tweet.authorId);
+
+        return new TwitterEmbed(tweet, info);
+    }
 }
+
 
 export class Profile { // Twitter user profile.
-    profileId: string;
-    profileName: string;
-    profileUsername: string;
-    profileImage?: string;
-    profileURL: string;
+    id: string;
+    name: string;
+    uname: string;
+    image?: string;
+    url: string;
 
     constructor(id: string, name: string, user: string, image?: string) {
-        this.profileId = id;
-        this.profileName = name;
-        this.profileUsername = user;
-        this.profileImage = image;
-        this.profileURL = `https://twitter.com/${this.profileUsername}`
-    }
-
-    get id(): string {
-        return this.profileId;
-    }
-
-    get name(): string {
-        return this.profileName;
-    }
-
-    get username(): string {
-        return this.profileUsername;
-    }
-
-    get url(): string | undefined{
-        return this.profileURL;
-    }
-
-    get image(): string {
-        return this.image;
+        this.id = id;
+        this.name = name;
+        this.uname = user;
+        this.image = image;
+        this.url = `https://twitter.com/${this.uname}`
     }
 }
+
 
 export class Tweet {
-    tweetAuthor: Profile;
-    tweetId: string;
-    tweetText: string;
-    tweetURL: string;
+    authorId: string;
+    id: string;
+    text: string;
 
-    constructor(author: Profile, id: string, text: string) {
-        this.tweetAuthor = author;
-        this.tweetId = id;
-        this.tweetText = text;
-        this.tweetURL = `https://twitter.com/${this.tweetAuthor.username}/status/${this.tweetId}`;
-    }
-
-    get author(): Profile {
-        return this.tweetAuthor;
-    }
-
-    get id(): string {
-        return this.tweetId;
-    }
-
-    get text(): string {
-        return this.tweetText;
-    }
-
-    get url(): string {
-        return this.tweetURL;
+    constructor(authorId: string, id_: string, text_: string) {
+        this.authorId = authorId;
+        this.id = id_;
+        this.text = text_;
+        //this.tweetURL = `https://twitter.com/${this.tweetAuthor.username}/status/${this.tweetId}`;
     }
 }
 
+
+export class TweetSet {
+    tweets: Tweet[];
+    latestId: string;
+
+    constructor(t: Tweet[], lid: string) {
+        this.tweets = t;
+        this.latestId = lid;
+    }
+}
+
+
 export class TwitterEmbed extends MessageEmbed {
-    public constructor(tweet: Tweet){
+    public constructor(tweet: Tweet, userInfo: Profile){
         super();
         this.setColor("#1DA1F2");
 
-        this.setTitle(`${tweet.author.name}:`);
-        this.setURL(tweet.url);
+        this.setTitle(`${userInfo.name}:`);
+        this.setURL(`https://twitter.com/${userInfo.uname}/status/${tweet.id}`);
         this.setDescription(tweet.text);
 
-        this.setAuthor({ name: tweet.author.username, iconURL: tweet.author.profileImage, url: tweet.author.url });
+        //this.profileURL = `https://twitter.com/${this.profileUsername}`
+
+        this.setAuthor({ name: userInfo.uname, iconURL: userInfo.image, url: userInfo.url });
         //this.setThumbnail("https://about.twitter.com/content/dam/about-twitter/en/brand-toolkit/brand-download-img-1.jpg.twimg.1920.jpg");
     }
 }
